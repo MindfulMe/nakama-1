@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
 // FeedItem model
@@ -18,6 +20,36 @@ type FeedItem struct {
 func getFeed(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	authUserID := ctx.Value(keyAuthUserID).(string)
+
+	if a := r.Header.Get("Accept"); strings.HasPrefix(a, "text/event-stream") {
+		f, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+
+		h := w.Header()
+		h.Set("Cache-Control", "no-cache")
+		h.Set("Connection", "keep-alive")
+		h.Set("Content-Type", "text/event-stream")
+
+		ch, unsubscribe := feedBroker.subscribe(authUserID)
+		defer unsubscribe()
+
+		for {
+			select {
+			case <-w.(http.CloseNotifier).CloseNotify():
+				return
+			case feedItem := <-ch:
+				if b, err := json.Marshal(feedItem); err != nil {
+					fmt.Fprintf(w, "error: %v\n\n", err)
+				} else {
+					fmt.Fprintf(w, "data: %s\n\n", b)
+				}
+				f.Flush()
+			}
+		}
+	}
 
 	rows, err := db.QueryContext(ctx, `
 		SELECT
@@ -108,7 +140,7 @@ func feedFanout(post Post) {
 			return
 		}
 		feedItem.Post = post
-		// TODO: broadcast feedItem
+		feedBroker.Notifier <- feedItem
 	}
 	if err = rows.Err(); err != nil {
 		log.Printf("could not iterate over feed fanout: %v\n", err)
