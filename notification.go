@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -30,6 +31,39 @@ type Notification struct {
 func getNotifications(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	authUserID := ctx.Value(keyAuthUserID).(string)
+
+	if a := r.Header.Get("Accept"); strings.Contains(a, "text/event-stream") {
+		f, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+
+		h := w.Header()
+		h.Set("Cache-Control", "no-cache")
+		h.Set("Connection", "keep-alive")
+		h.Set("Content-Type", "text/event-stream")
+
+		ch, unsubscribe := notificationsBroker.subscribe(authUserID)
+		defer unsubscribe()
+
+		for {
+			select {
+			case <-w.(http.CloseNotifier).CloseNotify():
+				return
+			case <-time.After(time.Second * 15):
+				fmt.Fprint(w, "ping: \n\n")
+				f.Flush()
+			case notification := <-ch:
+				if b, err := json.Marshal(notification); err != nil {
+					fmt.Fprintf(w, "error: %v\n\n", err)
+				} else {
+					fmt.Fprintf(w, "data: %s\n\n", b)
+				}
+				f.Flush()
+			}
+		}
+	}
 
 	rows, err := db.QueryContext(ctx, `
 		SELECT
@@ -144,8 +178,7 @@ func createFollowNotification(follower User, followingID string) {
 	created := !exists
 
 	if created {
-		// TODO: broadcast notification
-		log.Printf("follow notification created: %v\n", notification)
+		notificationsBroker.Notifier <- notification
 	}
 }
 
@@ -180,8 +213,7 @@ func commentNotificationFanout(comment Comment) {
 		notification.TargetID = &comment.PostID
 		notification.ActorUsername = comment.User.Username
 
-		// TODO: broadcast
-		log.Printf("comment notification created: %v", notification)
+		notificationsBroker.Notifier <- notification
 	}
 
 	if err = rows.Err(); err != nil {
@@ -225,8 +257,7 @@ func postMentionNotificationFanout(post Post) {
 		notification.ObjectID = &post.ID
 		notification.ActorUsername = post.User.Username
 
-		// TODO: broadcast
-		log.Printf("post mention notification created: %v\n", notification)
+		notificationsBroker.Notifier <- notification
 	}
 
 	if err = rows.Err(); err != nil {
@@ -267,8 +298,7 @@ func commentMentionNotificationFanout(comment Comment) {
 		notification.TargetID = &comment.PostID
 		notification.ActorUsername = comment.User.Username
 
-		// TODO: broadcast
-		log.Printf("comment mention notification created: %v\n", notification)
+		notificationsBroker.Notifier <- notification
 	}
 
 	if err = rows.Err(); err != nil {

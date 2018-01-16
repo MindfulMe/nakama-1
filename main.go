@@ -17,6 +17,8 @@ import (
 
 var db *sql.DB
 var feedBroker *FeedBroker
+var commentsBroker *CommentsBroker
+var notificationsBroker *NotificationsBroker
 
 func main() {
 	var err error
@@ -31,6 +33,8 @@ func main() {
 	}
 
 	feedBroker = newFeedBroker()
+	commentsBroker = newCommentsBroker()
+	notificationsBroker = newNotificationsBroker()
 
 	mux := chi.NewMux()
 	mux.Use(middleware.Recoverer)

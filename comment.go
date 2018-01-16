@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/cockroachdb/cockroach-go/crdb"
@@ -82,9 +83,10 @@ func createComment(w http.ResponseWriter, r *http.Request) {
 	comment.UserID = authUser.ID
 	comment.PostID = postID
 	comment.User = authUser
-	comment.Mine = true
 
-	// TODO: broadcast
+	commentsBroker.Notifier <- comment
+
+	comment.Mine = true
 
 	go commentMentionNotificationFanout(comment)
 	go commentNotificationFanout(comment)
@@ -97,6 +99,39 @@ func getComments(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	authUserID, authenticated := ctx.Value(keyAuthUserID).(string)
 	postID := chi.URLParam(r, "post_id")
+
+	if a := r.Header.Get("Accept"); strings.Contains(a, "text/event-stream") {
+		f, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+
+		h := w.Header()
+		h.Set("Cache-Control", "no-cache")
+		h.Set("Connection", "keep-alive")
+		h.Set("Content-Type", "text/event-stream")
+
+		ch, unsubscribe := commentsBroker.subscribe(authUserID, postID)
+		defer unsubscribe()
+
+		for {
+			select {
+			case <-w.(http.CloseNotifier).CloseNotify():
+				return
+			case <-time.After(time.Second * 15):
+				fmt.Fprint(w, "ping: \n\n")
+				f.Flush()
+			case comment := <-ch:
+				if b, err := json.Marshal(comment); err != nil {
+					fmt.Fprintf(w, "error: %v\n\n", err)
+				} else {
+					fmt.Fprintf(w, "data: %s\n\n", b)
+				}
+				f.Flush()
+			}
+		}
+	}
 
 	query := `
 		SELECT
