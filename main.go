@@ -64,8 +64,10 @@ func main() {
 
 	port := env("PORT", "80")
 	s := http.Server{
-		Addr:    ":" + port,
-		Handler: mux,
+		Addr:              ":" + port,
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		IdleTimeout:       time.Second * 120,
 	}
 
 	go func() {
