@@ -22,7 +22,7 @@ func getFeed(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	authUserID := ctx.Value(keyAuthUserID).(string)
 
-	if a := r.Header.Get("Accept"); strings.HasPrefix(a, "text/event-stream") {
+	if a := r.Header.Get("Accept"); strings.Contains(a, "text/event-stream") {
 		f, ok := w.(http.Flusher)
 		if !ok {
 			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
