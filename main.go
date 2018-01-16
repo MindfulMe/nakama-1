@@ -16,6 +16,7 @@ import (
 )
 
 var db *sql.DB
+var feedBroker *FeedBroker
 
 func main() {
 	var err error
@@ -28,6 +29,8 @@ func main() {
 	if err = db.Ping(); err != nil {
 		log.Fatalf("could not ping to database: %v\n", err)
 	}
+
+	feedBroker = newFeedBroker()
 
 	mux := chi.NewMux()
 	mux.Use(middleware.Recoverer)
