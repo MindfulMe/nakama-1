@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 )
 
 // FeedItem model
@@ -40,6 +41,9 @@ func getFeed(w http.ResponseWriter, r *http.Request) {
 			select {
 			case <-w.(http.CloseNotifier).CloseNotify():
 				return
+			case <-time.After(time.Second * 15):
+				fmt.Fprint(w, "ping: \n\n")
+				f.Flush()
 			case feedItem := <-ch:
 				if b, err := json.Marshal(feedItem); err != nil {
 					fmt.Fprintf(w, "error: %v\n\n", err)
