@@ -71,13 +71,13 @@ func newCommentsBroker() *CommentsBroker {
 		Clients:  make(map[CommentsBrokerClient]struct{}),
 		Notifier: make(chan Comment, 1),
 	}
+	go b.loop()
 	return &b
 }
 
 func (b *CommentsBroker) loop() {
 	for comment := range b.Notifier {
 		for client := range b.Clients {
-			// We don't notify the owner
 			if client.UserID != comment.UserID && client.PostID == comment.PostID {
 				client.Ch <- comment
 			}
