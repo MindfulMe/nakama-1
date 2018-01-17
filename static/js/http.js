@@ -53,8 +53,29 @@ function post(url, payload, headers) {
     return fetch(url, options).then(handleResponse)
 }
 
+/**
+ * Creates a Server-Sent Event connection
+ *
+ * @param {string} url
+ * @param {function} callback
+ */
+function subscribe(url, callback) {
+    // @ts-ignore
+    const eventSource = new EventSource(url)
+    eventSource.onmessage = ev => {
+        try {
+            const payload = JSON.parse(ev.data)
+            callback(payload)
+        } catch (_) { }
+    }
+    return () => {
+        eventSource.close()
+    }
+}
+
 export default {
     handleResponse,
     get,
     post,
+    subscribe,
 }

@@ -14,10 +14,12 @@ template.innerHTML = `
         <input type="text" placeholder="Spoiler of..." hidden>
         <button type="submit">Post</button>
     </form>
+    <button id="flush-queue" hidden></button>
     <div id="feed" class="articles" role="feed"></div>
 </div>
 `
 
+const feedQueue = []
 const feedCache = []
 async function getFeed() {
     if (feedCache.length !== 0) {
@@ -66,6 +68,7 @@ export default function () {
     const postSpoilerCheckbox = /** @type {HTMLInputElement} */ (postForm.querySelector('input[type=checkbox]'))
     const postSpoilerInput = /** @type {HTMLInputElement} */ (postForm.querySelector('input[type=text]'))
     const postButton = postForm.querySelector('button')
+    const flushQueueButton = page.getElementById('flush-queue')
     const feedDiv = page.getElementById('feed')
 
     postForm.addEventListener('submit', ev => {
@@ -92,6 +95,7 @@ export default function () {
         postButton.disabled = true
 
         http.post('/api/posts', payload).then(feedItem => {
+            flushQueue()
             feedDiv.insertBefore(createFeedItemArticle(feedItem), feedDiv.firstChild)
             postForm.reset()
             postTextArea.setCustomValidity('')
@@ -127,11 +131,31 @@ export default function () {
         postSpoilerInput.setCustomValidity('')
     })
 
+    const flushQueue = () => {
+        let feedItem
+        while (feedItem = feedQueue.shift()) {
+            feedDiv.insertBefore(createFeedItemArticle(feedItem), feedDiv.firstChild)
+        }
+        flushQueueButton.hidden = true
+    }
+
+    flushQueueButton.addEventListener('click', flushQueue)
+
     getFeed().then(feed => {
         feed.forEach(feedItem => {
             feedDiv.appendChild(createFeedItemArticle(feedItem))
         })
     }).catch(console.error)
+
+    const unsubscribe = http.subscribe('/api/feed', feedItem => {
+        feedQueue.push(feedItem)
+        feedCache.unshift(feedItem)
+        flushQueueButton.hidden = false
+        const l = feedQueue.length
+        flushQueueButton.textContent = `${l} new post${l !== 1 ? 's' : ''}`
+    })
+
+    page.addEventListener('disconnect', unsubscribe)
 
     return page
 }
