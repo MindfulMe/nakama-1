@@ -69,6 +69,13 @@ export default function (postId) {
 
     flushQueueButton.addEventListener('click', flushQueue)
 
+    const incrementCommentsCount = () => {
+        if (commentsCountSpan !== null) {
+            const oldCount = parseInt(commentsCountSpan.textContent, 10)
+            commentsCountSpan.textContent = String(oldCount + 1)
+        }
+    }
+
     Promise.all([
         http.get('/api/posts/' + postId),
         http.get(`/api/posts/${postId}/comments`)
@@ -150,10 +157,7 @@ export default function (postId) {
                 commentsDiv.appendChild(createCommentArticle(comment))
                 commentForm.reset()
                 commentTextArea.setCustomValidity('')
-                if (commentsCountSpan !== null) {
-                    const oldCount = parseInt(commentsCountSpan.textContent, 10)
-                    commentsCountSpan.textContent = String(oldCount + 1)
-                }
+                incrementCommentsCount()
                 if (subscribeButton !== null) {
                     subscribeButton.textContent = subscribeMsg(true)
                 }
@@ -177,6 +181,7 @@ export default function (postId) {
         const l = commentsQueue.length
         flushQueueButton.textContent = `${l} new comment${l !== 1 ? 's' : ''}`
         flushQueueButton.hidden = false
+        incrementCommentsCount()
     })
 
     page.addEventListener('disconnect', unsubscribe)
