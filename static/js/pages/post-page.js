@@ -8,6 +8,7 @@ template.innerHTML = `
 <div class="post-wrapper"></div>
 <div class="container">
     <div id="comments" class="articles" role="feed"></div>
+    <button id="flush-queue" hidden></button>
     <form id="comment-form" hidden>
         <textarea placeholder="Comment something..." required></textarea>
         <button type="submit">Comment</button>
@@ -45,16 +46,28 @@ function createCommentArticle(comment) {
 }
 
 const subscribeMsg = x => x ? 'Mute' : 'Subscribe'
+const commentsQueue = []
 
 export default function (postId) {
     const page = /** @type {DocumentFragment} */ (template.content.cloneNode(true))
     const postDiv = page.querySelector('.post-wrapper')
     const commentsDiv = page.getElementById('comments')
+    const flushQueueButton = page.getElementById('flush-queue')
     const commentForm = /** @type {HTMLFormElement} */ (page.getElementById('comment-form'))
     const commentTextArea = commentForm.querySelector('textarea')
     const commentButton = commentForm.querySelector('button')
     let commentsCountSpan = /** @type {HTMLSpanElement} */ (null)
     let subscribeButton = /** @type {HTMLButtonElement} */ (null)
+
+    const flushQueue = () => {
+        let comment
+        while (comment = commentsQueue.shift()) {
+            commentsDiv.appendChild(createCommentArticle(comment))
+        }
+        flushQueueButton.hidden = true
+    }
+
+    flushQueueButton.addEventListener('click', flushQueue)
 
     Promise.all([
         http.get('/api/posts/' + postId),
@@ -133,6 +146,7 @@ export default function (postId) {
             commentButton.disabled = true
 
             http.post(`/api/posts/${postId}/comments`, { content }).then(comment => {
+                flushQueue()
                 commentsDiv.appendChild(createCommentArticle(comment))
                 commentForm.reset()
                 commentTextArea.setCustomValidity('')
@@ -157,6 +171,15 @@ export default function (postId) {
             commentTextArea.setCustomValidity('')
         })
     }
+
+    const unsubscribe = http.subscribe(`/api/posts/${postId}/comments`, comment => {
+        commentsQueue.push(comment)
+        const l = commentsQueue.length
+        flushQueueButton.textContent = `${l} new comment${l !== 1 ? 's' : ''}`
+        flushQueueButton.hidden = false
+    })
+
+    page.addEventListener('disconnect', unsubscribe)
 
     return page
 }
