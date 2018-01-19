@@ -1,8 +1,8 @@
 import http from '../http.js'
+import html from '../html.js'
 import { ago } from '../utils.js'
 
-const template = document.createElement('template')
-template.innerHTML = `
+const template = html`
 <div class="container">
     <h1>Notifications</h1>
     <div id="notifications" class="notifications"></div>

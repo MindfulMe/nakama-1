@@ -1,10 +1,10 @@
 import { authenticated } from '../auth.js'
 import http from '../http.js'
+import html from '../html.js'
 import { goto, followersMsg, followMsg } from '../utils.js'
 import { followable } from '../behaviors.js'
 
-const template = document.createElement('template')
-template.innerHTML = `
+const template = html`
 <div class="container">
     <h1>Search</h1>
     <form id="search">

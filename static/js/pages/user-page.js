@@ -1,10 +1,10 @@
 import { authenticated } from '../auth.js'
 import http from '../http.js'
+import html from '../html.js'
 import { likeable, followable, spoileable } from '../behaviors.js'
 import { followersMsg, followMsg, likesMsg, commentsMsg, goto, linkify, escapeHTML, wrapInSpoiler, ago } from '../utils.js'
 
-const template = document.createElement('template')
-template.innerHTML = `
+const template = html`
 <div class="profile-wrapper"></div>
 <div id="posts" class="container articles" role="feed"></div>
 `

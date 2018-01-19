@@ -1,10 +1,10 @@
 import { authenticated } from '../auth.js'
 import http from '../http.js'
+import html from '../html.js'
 import { likeable } from '../behaviors.js'
 import { goto, likesMsg, commentsMsg, sanitizeContent, linkify, escapeHTML, ago } from '../utils.js'
 
-const template = document.createElement('template')
-template.innerHTML = `
+const template = html`
 <div class="post-wrapper"></div>
 <div class="container">
     <div id="comments" class="articles" role="feed"></div>
