@@ -1,5 +1,6 @@
 import { authenticated, authUser } from './auth.js'
 import http from './http.js'
+import { getNotificationMessage, getNotificationHref, goto } from './utils.js';
 
 const nav = document.getElementById('nav')
 nav.className = 'app-nav'
@@ -22,4 +23,27 @@ if (authenticated && location.pathname !== '/notifications') {
             notificationLink.classList.add('unread')
         }
     }).catch(console.error)
+}
+
+if (authenticated) {
+    http.subscribe('/api/notifications', notification => {
+        if (location.pathname === '/notifications') {
+            dispatchEvent(new CustomEvent('notification', { detail: notification }))
+            return
+        }
+        notificationLink.classList.add('unread')
+        Notification.requestPermission().then(permission => {
+            if (permission !== 'granted') return
+            const message = getNotificationMessage(notification)
+            if (message === null) return
+            const n = new Notification('New Notification', {
+                body: message,
+                tag: notification.id,
+            })
+            n.onclick = () => {
+                goto(getNotificationHref(notification))
+                n.close()
+            }
+        })
+    })
 }
