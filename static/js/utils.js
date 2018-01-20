@@ -134,3 +134,31 @@ export const ago = x => {
 
     return secondsAgo === 0 ? 'Just now' : secondsAgo + 's'
 }
+
+/**
+ * Builds a user friendly notification message.
+ *
+ * @returns {string=}
+ */
+export function getNotificationMessage({ actorUsername, verb, objectId, targetId }) {
+    switch (verb) {
+        case 'follow': return actorUsername + ' followed you'
+        case 'post_mention': return actorUsername + ' mentioned you in a post'
+        case 'comment': return actorUsername + ' commented on a post'
+        case 'comment_mention': return actorUsername + ' mentioned you in a comment'
+    }
+    return null
+}
+
+/**
+ * Builds the href to notification action.
+ */
+export function getNotificationHref({ actorUsername, verb, objectId, targetId }) {
+    switch (verb) {
+        case 'follow': return '/users/' + actorUsername
+        case 'post_mention': return '/posts/' + objectId
+        case 'comment':
+        case 'comment_mention': return `/posts/${targetId}#comment-${objectId}`
+    }
+    return '#!'
+}

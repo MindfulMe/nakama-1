@@ -14,10 +14,12 @@ nav.innerHTML = `
     ` : ''}
 `
 
+const notificationLink = nav.querySelector('#notifications-link')
+
 if (authenticated && location.pathname !== '/notifications') {
     http.get('/api/check_unread_notifications').then(unread => {
         if (unread) {
-            nav.querySelector('#notifications-link').classList.add('unread')
+            notificationLink.classList.add('unread')
         }
     }).catch(console.error)
 }
