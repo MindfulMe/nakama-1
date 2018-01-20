@@ -27,8 +27,15 @@ if (authenticated && location.pathname !== '/notifications') {
 
 if (authenticated) {
     http.subscribe('/api/notifications', notification => {
-        if (location.pathname === '/notifications') {
+        const { pathname } = location
+        if (pathname === '/notifications') {
             dispatchEvent(new CustomEvent('notification', { detail: notification }))
+            return
+        }
+        const match = /^\/posts\/([^\/]+)$/.exec(pathname)
+        if (match !== null
+            && /** @type {string} */ (notification.verb).startsWith('comment')
+            && notification.targetId === match[1]) {
             return
         }
         notificationLink.classList.add('unread')
