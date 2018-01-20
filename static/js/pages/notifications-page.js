@@ -69,7 +69,7 @@ export default function () {
     }
 
     addEventListener('notification', onNotification)
-    page.addEventListener('diconnect', () => {
+    page.addEventListener('disconnect', () => {
         removeEventListener('notification', onNotification)
     })
 
