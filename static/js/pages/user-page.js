@@ -57,8 +57,8 @@ export default function (username) {
                     <h1>${user.username}</h1>
                 </div>
                 <div class="user-stats">
-                    <a href="#!" class="followers-count">${followersMsg(user.followersCount)}</a>
-                    <a href="#!">${user.followingCount} following</a>
+                <a href="/users/${user.username}/followers" class="followers-count">${followersMsg(user.followersCount)}</a>
+                <a href="/users/${user.username}/following">${user.followingCount} following</a>
                 </div>
                 <div>
                     ${user.me ? `

@@ -37,16 +37,20 @@ const router = routes => pathname => {
     }
 }
 
+const notFound = genPage('not-found')
+
 /**
  * Route definitions.
  */
 const route = router([
     ['/', authenticated ? genPage('feed') : genPage('welcome')],
     ['/search', genPage('search')],
-    ['/notifications', genPage('notifications')],
+    ['/notifications', authenticated ? genPage('notifications') : notFound],
+    [/^\/users\/([^\/]+)\/following$/, genPage('following')],
+    [/^\/users\/([^\/]+)\/followers$/, genPage('followers')],
     [/^\/users\/([^\/]+)$/, genPage('user')],
     [/^\/posts\/([^\/]+)$/, genPage('post')],
-    [/^\//, genPage('not-found')],
+    [/^\//, notFound],
 ])
 
 /**

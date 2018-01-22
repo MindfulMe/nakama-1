@@ -1,8 +1,8 @@
 import { authenticated } from '../auth.js'
 import http from '../http.js'
 import html from '../html.js'
-import { goto, followersMsg, followMsg } from '../utils.js'
-import { followable } from '../behaviors.js'
+import { goto } from '../utils.js'
+import usersList from '../users-list.js'
 
 const template = html`
 <div class="container">
@@ -14,32 +14,6 @@ const template = html`
     <div id="results" class="articles"></div>
 </div>
 `
-
-function createUserArticle(user) {
-    const article = document.createElement('article')
-    article.className = 'user'
-    article.innerHTML = `
-        <a href="/users/${user.username}">
-            <figure class="avatar" data-initial="${user.username[0]}"></figure>
-            <span>${user.username}</span>
-        </a>
-        <div class="user-stats">
-            <span class="followers-count">${followersMsg(user.followersCount)}</span>
-            <span>${user.followingCount} following</span>
-        </div>
-        ${authenticated ? `
-            <div>
-                <button class="follow">${followMsg(user.followingOfMine)}</button>
-            </div>
-        ` : ''}
-    `
-
-    if (authenticated) {
-        followable(article.querySelector('.follow'), user.username)
-    }
-
-    return article
-}
 
 export default function () {
     const page = /** @type {DocumentFragment} */ (template.content.cloneNode(true))
@@ -58,9 +32,7 @@ export default function () {
                 goto('/users/' + users[0].username)
                 return
             }
-            users.forEach(user => {
-                resultDiv.appendChild(createUserArticle(user))
-            })
+            usersList(resultDiv, users)
         }).catch(err => {
             console.error(err)
             alert(err.message)
