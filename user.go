@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -90,80 +91,11 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 
 // TODO: add pagination
 func getUsers(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	authUserID, authenticated := ctx.Value(keyAuthUserID).(string)
 	username := strings.TrimSpace(r.URL.Query().Get("username"))
-
-	if username == "" {
-		http.Error(w, "Username required", http.StatusUnprocessableEntity)
-		return
-	}
-
-	query := `
-		SELECT
-			users.username,
-			users.avatar_url,
-			users.followers_count,
-			users.following_count,
-			users.created_at`
-	args := []interface{}{username}
-	if authenticated {
-		query += `,
-			following.following_id IS NOT NULL AS follower_of_mine,
-			followers.follower_id IS NOT NULL AS following_of_mine`
-		args = append(args, authUserID)
-	}
-	query += `
-		FROM users`
-	if authenticated {
-		query += `
-			LEFT JOIN follows AS followers
-				ON followers.follower_id = $2
-				AND followers.following_id = users.id
-			LEFT JOIN follows AS following
-				ON following.follower_id = users.id
-				AND following.following_id = $2
-			WHERE users.id != $2 AND`
-	} else {
-		query += `
-			WHERE`
-	}
-	query += ` users.username ILIKE '%' || $1 || '%'
-		ORDER BY users.username`
-
-	rows, err := db.QueryContext(ctx, query, args...)
+	users, err := getUsersWhere(r.Context(),
+		"users.username ILIKE '%' || $1 || '%'", username)
 	if err != nil {
-		respondError(w, fmt.Errorf("could not query users: %v", err))
-		return
-	}
-	defer rows.Close()
-
-	users := make([]Profile, 0)
-	for rows.Next() {
-		var user Profile
-		dest := []interface{}{
-			&user.Username,
-			&user.AvatarURL,
-			&user.FollowersCount,
-			&user.FollowingCount,
-			&user.CreatedAt,
-		}
-		if authenticated {
-			dest = append(dest,
-				&user.FollowerOfMine,
-				&user.FollowingOfMine,
-			)
-		}
-
-		if err = rows.Scan(dest...); err != nil {
-			respondError(w, fmt.Errorf("could not scan user: %v", err))
-			return
-		}
-
-		users = append(users, user)
-	}
-	if err = rows.Err(); err != nil {
-		respondError(w, fmt.Errorf("could not iterate over users: %v", err))
+		respondError(w, err)
 		return
 	}
 
@@ -326,4 +258,108 @@ func toggleFollow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, ToggleFollowPayload{followingOfMine, followersCount}, http.StatusOK)
+}
+
+func getFollowers(w http.ResponseWriter, r *http.Request) {
+	users, err := getUsersWhere(r.Context(), `users.id IN (
+		SELECT follower_id
+		FROM follows
+		WHERE following_id = (
+			SELECT id FROM users WHERE username = $1
+		)
+	)`, chi.URLParam(r, "username"))
+	if err != nil {
+		respondError(w, err)
+		return
+	}
+
+	respondJSON(w, users, http.StatusOK)
+}
+
+func getFollowing(w http.ResponseWriter, r *http.Request) {
+	users, err := getUsersWhere(r.Context(), `users.id IN (
+		SELECT following_id
+		FROM follows
+		WHERE follower_id = (
+			SELECT id FROM users WHERE username = $1
+		)
+	)`, chi.URLParam(r, "username"))
+	if err != nil {
+		respondError(w, err)
+		return
+	}
+
+	respondJSON(w, users, http.StatusOK)
+}
+
+func getUsersWhere(ctx context.Context, where, username string) ([]Profile, error) {
+	authUserID, authenticated := ctx.Value(keyAuthUserID).(string)
+
+	query := `
+		SELECT
+			users.username,
+			users.avatar_url,
+			users.followers_count,
+			users.following_count,
+			users.created_at`
+	args := []interface{}{username}
+	if authenticated {
+		query += `,
+			following.following_id IS NOT NULL AS follower_of_mine,
+			followers.follower_id IS NOT NULL AS following_of_mine`
+		args = append(args, authUserID)
+	}
+	query += `
+		FROM users`
+	if authenticated {
+		query += `
+			LEFT JOIN follows AS followers
+				ON followers.follower_id = $2
+				AND followers.following_id = users.id
+			LEFT JOIN follows AS following
+				ON following.follower_id = users.id
+				AND following.following_id = $2
+			WHERE users.id != $2 AND`
+	} else {
+		query += `
+			WHERE`
+	}
+
+	query += fmt.Sprintf(" %s ORDER BY users.username", where)
+
+	rows, err := db.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("could not query users: %v", err)
+	}
+	defer rows.Close()
+
+	users := make([]Profile, 0)
+	for rows.Next() {
+		var user Profile
+		dest := []interface{}{
+			&user.Username,
+			&user.AvatarURL,
+			&user.FollowersCount,
+			&user.FollowingCount,
+			&user.CreatedAt,
+		}
+		if authenticated {
+			dest = append(dest,
+				&user.FollowerOfMine,
+				&user.FollowingOfMine,
+			)
+		}
+
+		if err = rows.Scan(dest...); err != nil {
+			return nil, fmt.Errorf("could not scan user: %v", err)
+		}
+
+		users = append(users, user)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("could not iterate over users: %v", err)
+	}
+
+	return users, nil
 }

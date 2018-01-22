@@ -56,6 +56,8 @@ func main() {
 		api.With(maybeAuthUserID).Get("/users", getUsers)
 		api.With(maybeAuthUserID).Get("/users/{username}", getUser)
 		api.With(mustAuthUser).Post("/users/{username}/toggle_follow", toggleFollow)
+		api.With(maybeAuthUserID).Get("/users/{username}/followers", getFollowers)
+		api.With(maybeAuthUserID).Get("/users/{username}/following", getFollowing)
 		api.With(jsonRequired, mustAuthUser).Post("/posts", createPost)
 		api.With(maybeAuthUserID).Get("/users/{username}/posts", getPosts)
 		api.With(maybeAuthUserID).Get("/posts/{post_id}", getPost)
