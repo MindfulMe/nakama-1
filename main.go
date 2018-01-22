@@ -94,7 +94,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("trying to start server at %s", addr)
+	log.Printf("starting HTTP server at %s", addr)
 	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("could not start server: %v\n", err)
 	}
