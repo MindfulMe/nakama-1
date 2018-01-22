@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"flag"
 	"log"
 	"net/http"
 	"os"
@@ -21,8 +22,17 @@ var commentsBroker *CommentsBroker
 var notificationsBroker *NotificationsBroker
 
 func main() {
+	var databaseURL string
+	var addr string
+	flag.StringVar(&databaseURL, "cockroach",
+		env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/nakama?sslmode=disable"),
+		"Address in which CockroachDB runs.")
+	flag.StringVar(&addr, "addr",
+		":"+env("PORT", "80"),
+		"Address in which the HTTP server will run.")
+	flag.Parse()
+
 	var err error
-	databaseURL := env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/nakama?sslmode=disable")
 	db, err = sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatalf("could not open database connection: %v\n", err)
@@ -66,12 +76,11 @@ func main() {
 		mux.Get("/*", serveFile("static/index.html"))
 	})
 
-	port := env("PORT", "80")
 	s := http.Server{
-		Addr:              ":" + port,
+		Addr:              addr,
 		Handler:           mux,
-		ReadHeaderTimeout: 5 * time.Second,
-		IdleTimeout:       time.Second * 120,
+		ReadHeaderTimeout: time.Second * 5,
+		IdleTimeout:       time.Second * 60,
 	}
 
 	go func() {
@@ -81,11 +90,11 @@ func main() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 		defer cancel()
 		if err := s.Shutdown(ctx); err != nil {
-			log.Fatalf("could not shutdown the server: %v\n", err)
+			log.Fatalf("could not shutdown server: %v\n", err)
 		}
 	}()
 
-	log.Printf("Server listenning on port %s", port)
+	log.Printf("trying to start server at %s", addr)
 	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("could not start server: %v\n", err)
 	}
