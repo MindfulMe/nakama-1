@@ -227,6 +227,10 @@ func collectMentions(content string) []string {
 
 func postMentionNotificationFanout(post Post) {
 	usernames := collectMentions(post.Content)
+	if len(usernames) == 0 {
+		return
+	}
+
 	rows, err := db.Query(`
 		INSERT INTO notifications (user_id, actor_id, verb, object_id)
 		SELECT id, $1, 'post_mention', $2
@@ -267,6 +271,10 @@ func postMentionNotificationFanout(post Post) {
 
 func commentMentionNotificationFanout(comment Comment) {
 	usernames := collectMentions(comment.Content)
+	if len(usernames) == 0 {
+		return
+	}
+
 	rows, err := db.Query(`
 		INSERT INTO notifications (user_id, actor_id, verb, object_id, target_id)
 		SELECT id, $1, 'comment_mention', $2, $3
