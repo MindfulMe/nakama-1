@@ -70,6 +70,7 @@ func main() {
 		api.With(mustAuthUser).Get("/notifications", getNotifications)
 		api.With(mustAuthUser).Get("/check_unread_notifications", checkUnreadNotifications)
 	})
+	mux.Get("/favicon.ico", serveFile("static/favicon.ico"))
 	mux.Group(func(mux chi.Router) {
 		// TODO: remove no cache
 		mux.Use(middleware.NoCache)
