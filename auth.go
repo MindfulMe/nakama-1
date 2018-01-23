@@ -39,7 +39,7 @@ const (
 	keyAuthUser
 )
 
-const idTokenLifetime = time.Minute
+const idTokenLifetime = time.Hour
 
 var jwtKey = []byte(env("JWT_KEY", "secret"))
 
