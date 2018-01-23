@@ -105,7 +105,12 @@ func login(w http.ResponseWriter, r *http.Request) {
 		HttpOnly: true,
 		// Secure:   true,
 	})
-	respondJSON(w, LoginPayload{user, idTokenString, refreshTokenString, idTokenExpiresAt}, http.StatusOK)
+	respondJSON(w, LoginPayload{
+		user,
+		idTokenString,
+		refreshTokenString,
+		idTokenExpiresAt,
+	}, http.StatusOK)
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
@@ -155,16 +160,12 @@ func auth(next http.Handler) http.Handler {
 				&jwt.StandardClaims{},
 				jwtKeyfunc)
 			if err != nil {
-				http.Error(w,
-					http.StatusText(http.StatusUnauthorized),
-					http.StatusUnauthorized)
+				unauthorize(w)
 				return
 			}
 			standardClaims, ok := refreshToken.Claims.(*jwt.StandardClaims)
 			if !ok {
-				http.Error(w,
-					http.StatusText(http.StatusUnauthorized),
-					http.StatusUnauthorized)
+				unauthorize(w)
 				return
 			}
 
@@ -172,9 +173,7 @@ func auth(next http.Handler) http.Handler {
 			if err := db.QueryRowContext(ctx, `
 				SELECT username, avatar_url FROM users WHERE id = $1
 			`, user.ID).Scan(&user.Username, &user.AvatarURL); err == sql.ErrNoRows {
-				http.Error(w,
-					http.StatusText(http.StatusTeapot),
-					http.StatusTeapot)
+				http.Error(w, http.StatusText(http.StatusTeapot), http.StatusTeapot)
 				return
 			} else if err != nil {
 				respondError(w, fmt.Errorf("could not fetch user: %v", err))
@@ -236,9 +235,7 @@ func auth(next http.Handler) http.Handler {
 func userRequired(next http.Handler) http.Handler {
 	return auth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if _, authenticated := r.Context().Value(keyAuthUser).(User); !authenticated {
-			http.Error(w,
-				http.StatusText(http.StatusUnauthorized),
-				http.StatusUnauthorized)
+			unauthorize(w)
 			return
 		}
 
@@ -261,4 +258,10 @@ func createRefreshToken(userID string) (string, error) {
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
 		Subject: userID,
 	}).SignedString(jwtKey)
+}
+
+func unauthorize(w http.ResponseWriter) {
+	http.Error(w,
+		http.StatusText(http.StatusUnauthorized),
+		http.StatusUnauthorized)
 }
