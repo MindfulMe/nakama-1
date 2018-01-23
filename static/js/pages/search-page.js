@@ -1,8 +1,10 @@
-import { authenticated } from '../auth.js'
+import { getAuthUser } from '../auth.js'
 import http from '../http.js'
 import html from '../html.js'
 import { goto } from '../utils.js'
 import usersList from '../users-list.js'
+
+const authenticated = getAuthUser() !== null
 
 const template = html`
 <div class="container">
@@ -21,6 +23,8 @@ export default function () {
     const searchInput = searchForm.querySelector('input')
     const searchButton = searchForm.querySelector('button')
     const resultDiv = page.getElementById('results')
+
+    searchInput.focus()
 
     searchForm.addEventListener('submit', ev => {
         ev.preventDefault()

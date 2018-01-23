@@ -11,6 +11,10 @@ export async function handleResponse(res) {
 
     const payload = await res[isJSON ? 'json' : 'text']()
 
+    if (res.status === 401) {
+        localStorage.removeItem('auth_user')
+    }
+
     if (!res.ok) {
         const err = new Error(res.statusText)
         err['statusCode'] = res.status

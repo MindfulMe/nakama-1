@@ -6,11 +6,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 )
+
+// Claims used in JWT
+type Claims struct {
+	Nickname string  `json:"nickname"`
+	Picture  *string `json:"picture,omitempty"`
+	jwt.StandardClaims
+}
 
 // LoginInput request body
 type LoginInput struct {
@@ -19,9 +25,10 @@ type LoginInput struct {
 
 // LoginPayload response body
 type LoginPayload struct {
-	User      User      `json:"user"`
-	JWT       string    `json:"jwt"`
-	ExpiresAt time.Time `json:"expiresAt"`
+	User             User      `json:"user"`
+	IDToken          string    `json:"idToken"`
+	RefreshToken     string    `json:"refreshToken"`
+	IDTokenExpiresAt time.Time `json:"idTokenExpiresAt"`
 }
 
 // ContextKey used in middlewares
@@ -32,7 +39,7 @@ const (
 	keyAuthUser
 )
 
-const year = time.Hour * 24 * 365
+const idTokenLifetime = time.Minute
 
 var jwtKey = []byte(env("JWT_KEY", "secret"))
 
@@ -40,7 +47,7 @@ func jwtKeyfunc(*jwt.Token) (interface{}, error) {
 	return jwtKey, nil
 }
 
-// TODO: make it secure
+// TODO: passwordless
 func login(w http.ResponseWriter, r *http.Request) {
 	var input LoginInput
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -50,7 +57,7 @@ func login(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	email := input.Email
-	// TODO: validate input, passwordless
+	// TODO: validate input
 
 	var user User
 	if err := db.QueryRowContext(r.Context(), `
@@ -71,100 +78,187 @@ func login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expiresAt := time.Now().Add(year) // One year
-	tokenString, err := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-		Subject:   user.ID,
-		ExpiresAt: expiresAt.Unix(),
-	}).SignedString(jwtKey)
+	idTokenExpiresAt := time.Now().Add(idTokenLifetime)
+	idTokenString, err := createIDToken(user, idTokenExpiresAt.Unix())
 	if err != nil {
-		respondError(w, fmt.Errorf("could not generate JWT: %v", err))
+		respondError(w, fmt.Errorf("could not create id token: %v", err))
+		return
+	}
+	refreshTokenString, err := createRefreshToken(user.ID)
+	if err != nil {
+		respondError(w, fmt.Errorf("could not create refresh token: %v", err))
 		return
 	}
 
 	http.SetCookie(w, &http.Cookie{
-		Name:    "jwt",
-		Value:   tokenString,
-		Path:    "/",
-		Expires: expiresAt,
+		Name:     "id_token",
+		Value:    idTokenString,
+		Path:     "/",
+		Expires:  idTokenExpiresAt,
+		HttpOnly: true,
 		// Secure:   true,
 	})
-	respondJSON(w, LoginPayload{user, tokenString, expiresAt}, http.StatusOK)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    refreshTokenString,
+		Path:     "/",
+		HttpOnly: true,
+		// Secure:   true,
+	})
+	respondJSON(w, LoginPayload{user, idTokenString, refreshTokenString, idTokenExpiresAt}, http.StatusOK)
 }
 
 func logout(w http.ResponseWriter, r *http.Request) {
 	http.SetCookie(w, &http.Cookie{
-		Name:   "jwt",
-		Value:  "",
-		Path:   "/",
-		MaxAge: -1,
+		Name:     "id_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		// Secure:   true,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     "refresh_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: true,
+		// Secure:   true,
 	})
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func maybeAuthUserID(next http.Handler) http.Handler {
+func auth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var tokenString string
-		if a := r.Header.Get("Authorization"); strings.HasPrefix(a, "Bearer ") {
-			tokenString = a[7:]
-		} else if c, err := r.Cookie("jwt"); err == nil {
-			tokenString = c.Value
-		} else {
-			next.ServeHTTP(w, r)
-			return
+		idTokenString := r.Header.Get("X-Id-Token")
+		refreshTokenString := r.Header.Get("X-Refresh-Token")
+		if idTokenString == "" {
+			if c, err := r.Cookie("id_token"); err == nil {
+				idTokenString = c.Value
+			}
+		}
+		if refreshTokenString == "" {
+			c, err := r.Cookie("refresh_token")
+			if err != nil {
+				next.ServeHTTP(w, r)
+				return
+			}
+			refreshTokenString = c.Value
 		}
 
-		p := jwt.Parser{ValidMethods: []string{jwt.SigningMethodHS256.Name}}
-		token, err := p.ParseWithClaims(tokenString, &jwt.StandardClaims{}, jwtKeyfunc)
-		if err != nil {
-			http.Error(w,
-				http.StatusText(http.StatusUnauthorized),
-				http.StatusUnauthorized)
-			return
-		}
-
-		claims, ok := token.Claims.(*jwt.StandardClaims)
-		if !ok || !token.Valid {
-			http.Error(w,
-				http.StatusText(http.StatusUnauthorized),
-				http.StatusUnauthorized)
-			return
-		}
-
-		authUserID := claims.Subject
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, keyAuthUserID, authUserID)
+		p := jwt.Parser{ValidMethods: []string{jwt.SigningMethodHS256.Name}}
+
+		refreshTokenFunc := func() {
+			refreshToken, err := p.ParseWithClaims(
+				refreshTokenString,
+				&jwt.StandardClaims{},
+				jwtKeyfunc)
+			if err != nil {
+				http.Error(w,
+					http.StatusText(http.StatusUnauthorized),
+					http.StatusUnauthorized)
+				return
+			}
+			standardClaims, ok := refreshToken.Claims.(*jwt.StandardClaims)
+			if !ok {
+				http.Error(w,
+					http.StatusText(http.StatusUnauthorized),
+					http.StatusUnauthorized)
+				return
+			}
+
+			user := User{ID: standardClaims.Subject}
+			if err := db.QueryRowContext(ctx, `
+				SELECT username, avatar_url FROM users WHERE id = $1
+			`, user.ID).Scan(&user.Username, &user.AvatarURL); err == sql.ErrNoRows {
+				http.Error(w,
+					http.StatusText(http.StatusTeapot),
+					http.StatusTeapot)
+				return
+			} else if err != nil {
+				respondError(w, fmt.Errorf("could not fetch user: %v", err))
+				return
+			}
+
+			idTokenExpiresAt := time.Now().Add(idTokenLifetime)
+			idTokenExpiresAtText, err := idTokenExpiresAt.MarshalText()
+			if err != nil {
+				respondError(w, fmt.Errorf("could not marshall time as text: %v", err))
+				return
+			}
+			if idTokenString, err = createIDToken(user, idTokenExpiresAt.Unix()); err != nil {
+				respondError(w, fmt.Errorf("could not create id token: %v", err))
+				return
+			}
+
+			h := w.Header()
+			h.Set("X-Id-Token", idTokenString)
+			h.Set("X-Id-Token-Expires-At", string(idTokenExpiresAtText))
+			http.SetCookie(w, &http.Cookie{
+				Name:     "id_token",
+				Value:    idTokenString,
+				Path:     "/",
+				Expires:  idTokenExpiresAt,
+				HttpOnly: true,
+				// Secure:   true,
+			})
+
+			ctx = context.WithValue(ctx, keyAuthUserID, user.ID)
+			ctx = context.WithValue(ctx, keyAuthUser, user)
+
+			next.ServeHTTP(w, r.WithContext(ctx))
+		}
+
+		if idTokenString == "" {
+			refreshTokenFunc()
+			return
+		}
+
+		idToken, err := p.ParseWithClaims(idTokenString, &Claims{}, jwtKeyfunc)
+		claims, ok := idToken.Claims.(*Claims)
+		if err != nil || !ok || !idToken.Valid {
+			refreshTokenFunc()
+			return
+		}
+
+		ctx = context.WithValue(ctx, keyAuthUserID, claims.StandardClaims.Subject)
+		ctx = context.WithValue(ctx, keyAuthUser, User{
+			ID:        claims.StandardClaims.Subject,
+			Username:  claims.Nickname,
+			AvatarURL: claims.Picture,
+		})
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-func mustAuthUser(next http.Handler) http.Handler {
-	return maybeAuthUserID(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		authUserID, authenticated := ctx.Value(keyAuthUserID).(string)
-		if !authenticated {
+func userRequired(next http.Handler) http.Handler {
+	return auth(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if _, authenticated := r.Context().Value(keyAuthUser).(User); !authenticated {
 			http.Error(w,
 				http.StatusText(http.StatusUnauthorized),
 				http.StatusUnauthorized)
 			return
 		}
 
-		var authUser User
-		if err := db.QueryRowContext(ctx, "SELECT username, avatar_url FROM users WHERE id = $1", authUserID).
-			Scan(&authUser.Username, &authUser.AvatarURL); err == sql.ErrNoRows {
-			http.Error(w,
-				http.StatusText(http.StatusTeapot),
-				http.StatusTeapot)
-			return
-		} else if err != nil {
-			respondError(w, fmt.Errorf("could not query authenticated user: %v", err))
-			return
-		}
-
-		authUser.ID = authUserID
-		ctx = context.WithValue(ctx, keyAuthUser, authUser)
-
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r)
 	}))
+}
+
+func createIDToken(user User, expiresAt int64) (string, error) {
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, Claims{
+		user.Username,
+		user.AvatarURL,
+		jwt.StandardClaims{
+			Subject:   user.ID,
+			ExpiresAt: expiresAt,
+		},
+	}).SignedString(jwtKey)
+}
+
+func createRefreshToken(userID string) (string, error) {
+	return jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
+		Subject: userID,
+	}).SignedString(jwtKey)
 }

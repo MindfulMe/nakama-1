@@ -1,8 +1,10 @@
-import { authenticated } from '../auth.js'
+import { getAuthUser } from '../auth.js'
 import http from '../http.js'
 import html from '../html.js'
 import { likeable, followable, spoileable } from '../behaviors.js'
 import { followersMsg, followMsg, likesMsg, commentsMsg, goto, linkify, escapeHTML, wrapInSpoiler, ago } from '../utils.js'
+
+const authenticated = getAuthUser() !== null
 
 const template = html`
 <div class="profile-wrapper"></div>
@@ -74,13 +76,13 @@ export default function (username) {
 
         if (user.me) {
             profileDiv.querySelector('#logout').addEventListener('click', () => {
-                localStorage.clear()
-                // Clear cookies
-                document.cookie.split(';').forEach(c => {
-                    document.cookie = c.trim()
-                        .replace(/=.*/, `=;expires=${new Date().toUTCString()};path=/`)
+                http.post('/api/logout').then(() => {
+                    localStorage.clear()
+                    location.assign('/')
+                }).catch(err => {
+                    console.error(err)
+                    alert('could not logout')
                 })
-                location.assign('/')
             })
         } else if (authenticated) {
             followable(profileDiv.querySelector('#follow'), user.username)

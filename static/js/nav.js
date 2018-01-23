@@ -1,6 +1,9 @@
-import { authenticated, authUser } from './auth.js'
+import { getAuthUser } from './auth.js'
 import http from './http.js'
 import { getNotificationMessage, getNotificationHref, goto } from './utils.js';
+
+const authUser = getAuthUser()
+const authenticated = authUser !== null
 
 const nav = document.getElementById('nav')
 nav.className = 'app-nav'

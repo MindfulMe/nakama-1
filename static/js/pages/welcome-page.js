@@ -30,7 +30,6 @@ export default function () {
         loginButton.disabled = true
 
         http.post('/api/login', { email }).then(payload => {
-            localStorage.setItem('expires_at', payload.expiresAt)
             localStorage.setItem('auth_user', JSON.stringify(payload.user))
             location.reload()
         }).catch(err => {

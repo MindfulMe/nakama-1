@@ -1,8 +1,10 @@
-import { authenticated } from '../auth.js'
+import { getAuthUser } from '../auth.js'
 import http from '../http.js'
 import html from '../html.js'
 import { likeable } from '../behaviors.js'
 import { goto, likesMsg, commentsMsg, sanitizeContent, linkify, escapeHTML, ago } from '../utils.js'
+
+const authenticated = getAuthUser() !== null
 
 const template = html`
 <div class="post-wrapper"></div>

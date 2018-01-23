@@ -1,5 +1,6 @@
-import { authenticated } from './auth.js'
+import { getAuthUser } from './auth.js'
 
+const authenticated = getAuthUser() !== null
 const pagesCache = new Map()
 
 /**
