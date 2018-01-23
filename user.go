@@ -325,7 +325,7 @@ func getUsersWhere(ctx context.Context, where, username string) ([]Profile, erro
 			WHERE`
 	}
 
-	query += fmt.Sprintf(" %s ORDER BY users.username", where)
+	query += fmt.Sprintf(" %s\nORDER BY users.username", where)
 
 	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
