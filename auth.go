@@ -210,14 +210,14 @@ func auth(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 
-		if idTokenString == "" {
+		idToken, err := p.ParseWithClaims(idTokenString, &Claims{}, jwtKeyfunc)
+		if err != nil {
 			refreshTokenFunc()
 			return
 		}
 
-		idToken, err := p.ParseWithClaims(idTokenString, &Claims{}, jwtKeyfunc)
 		claims, ok := idToken.Claims.(*Claims)
-		if err != nil || !ok || !idToken.Valid {
+		if !ok || !idToken.Valid {
 			refreshTokenFunc()
 			return
 		}
