@@ -47,6 +47,12 @@ func jwtKeyfunc(*jwt.Token) (interface{}, error) {
 	return jwtKey, nil
 }
 
+// Validate user input
+func (input *LoginInput) Validate() map[string]string {
+	// TODO: actual validation
+	return nil
+}
+
 // TODO: passwordless
 func login(w http.ResponseWriter, r *http.Request) {
 	var input LoginInput
@@ -56,8 +62,12 @@ func login(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	if errs := input.Validate(); len(errs) != 0 {
+		respondJSON(w, errs, http.StatusUnprocessableEntity)
+		return
+	}
+
 	email := input.Email
-	// TODO: validate input
 
 	var user User
 	if err := db.QueryRowContext(r.Context(), `

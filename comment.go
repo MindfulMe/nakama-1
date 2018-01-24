@@ -12,11 +12,6 @@ import (
 	"github.com/go-chi/chi"
 )
 
-// CreateCommentInput request body
-type CreateCommentInput struct {
-	Content string `json:"content"`
-}
-
 // Comment model
 type Comment struct {
 	ID         string    `json:"id"`
@@ -30,10 +25,21 @@ type Comment struct {
 	Liked      bool      `json:"liked"`
 }
 
+// CreateCommentInput request body
+type CreateCommentInput struct {
+	Content string `json:"content"`
+}
+
 // ToggleCommentLikePayload response body
 type ToggleCommentLikePayload struct {
 	Liked      bool `json:"liked"`
 	LikesCount int  `json:"likesCount"`
+}
+
+// Validate user input
+func (input *CreateCommentInput) Validate() map[string]string {
+	// TODO: actual validation
+	return nil
 }
 
 func createComment(w http.ResponseWriter, r *http.Request) {
@@ -44,8 +50,12 @@ func createComment(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	if errs := input.Validate(); len(errs) != 0 {
+		respondJSON(w, errs, http.StatusUnprocessableEntity)
+		return
+	}
+
 	content := input.Content
-	// TODO: validate input
 
 	ctx := r.Context()
 	authUser := ctx.Value(keyAuthUser).(User)

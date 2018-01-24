@@ -15,12 +15,6 @@ import (
 	"github.com/lib/pq"
 )
 
-// CreateUserInput request body
-type CreateUserInput struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-}
-
 // User model
 type User struct {
 	ID        string  `json:"-"`
@@ -41,10 +35,22 @@ type Profile struct {
 	FollowingOfMine bool      `json:"followingOfMine"`
 }
 
+// CreateUserInput request body
+type CreateUserInput struct {
+	Email    string `json:"email"`
+	Username string `json:"username"`
+}
+
 // ToggleFollowPayload response body
 type ToggleFollowPayload struct {
 	FollowingOfMine bool `json:"followingOfMine"`
 	FollowersCount  int  `json:"followersCount"`
+}
+
+// Validate user input
+func (input *CreateUserInput) Validate() map[string]string {
+	// TODO: actual validation
+	return nil
 }
 
 var errFollowingMyself = errors.New("Try following someone else")
@@ -57,9 +63,13 @@ func createUser(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	if errs := input.Validate(); len(errs) != 0 {
+		respondJSON(w, errs, http.StatusUnprocessableEntity)
+		return
+	}
+
 	email := input.Email
 	username := input.Username
-	// TODO: validate input
 
 	var user Profile
 	err := db.QueryRowContext(r.Context(), `

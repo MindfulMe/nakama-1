@@ -11,12 +11,6 @@ import (
 	"github.com/go-chi/chi"
 )
 
-// CreatePostInput request body
-type CreatePostInput struct {
-	Content   string  `json:"content"`
-	SpoilerOf *string `json:"spoilerOf,omitempty"`
-}
-
 // Post model
 type Post struct {
 	ID            string    `json:"id"`
@@ -32,10 +26,22 @@ type Post struct {
 	Subscribed    bool      `json:"subscribed"`
 }
 
+// CreatePostInput request body
+type CreatePostInput struct {
+	Content   string  `json:"content"`
+	SpoilerOf *string `json:"spoilerOf,omitempty"`
+}
+
 // TogglePostLikePayload response body
 type TogglePostLikePayload struct {
 	Liked      bool `json:"liked"`
 	LikesCount int  `json:"likesCount"`
+}
+
+// Validate user input
+func (input *CreatePostInput) Validate() map[string]string {
+	// TODO: actual validation
+	return nil
 }
 
 func createPost(w http.ResponseWriter, r *http.Request) {
@@ -46,9 +52,13 @@ func createPost(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	if errs := input.Validate(); len(errs) != 0 {
+		respondJSON(w, errs, http.StatusUnprocessableEntity)
+		return
+	}
+
 	content := input.Content
 	spoilerOf := input.SpoilerOf
-	// TODO: Validate input
 
 	ctx := r.Context()
 	authUser := ctx.Value(keyAuthUser).(User)
