@@ -1,7 +1,7 @@
 import http from '../http.js'
-import html from '../html.js'
 
-const template = html`
+const template = document.createElement('template')
+template.innerHTML = `
 <div class="container">
     <h1>Welcome to Nakama 👋</h1>
     <form id="login">

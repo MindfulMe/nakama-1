@@ -1,12 +1,12 @@
 import { getAuthUser } from '../auth.js'
 import http from '../http.js'
-import html from '../html.js'
 import { goto } from '../utils.js'
 import usersList from '../users-list.js'
 
 const authenticated = getAuthUser() !== null
 
-const template = html`
+const template = document.createElement('template')
+template.innerHTML = `
 <div class="container">
     <h1>Search</h1>
     <form id="search">

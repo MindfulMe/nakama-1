@@ -1,5 +1,4 @@
 import { getAuthUser } from './auth.js'
-import html from './html.js'
 import http from './http.js'
 import { followable } from './behaviors.js'
 import { followersMsg, followMsg } from './utils.js'

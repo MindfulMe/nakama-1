@@ -1,8 +1,8 @@
 import http from '../http.js'
-import html from '../html.js'
 import usersList from '../users-list.js'
 
-const template = html`
+const template = document.createElement('template')
+template.innerHTML = `
 <div class="container">
     <h1>Followers</h1>
     <div id="results" class="articles"></div>

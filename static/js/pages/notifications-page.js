@@ -1,8 +1,8 @@
 import http from '../http.js'
-import html from '../html.js'
 import { ago, getNotificationMessage, getNotificationHref } from '../utils.js'
 
-const template = html`
+const template = document.createElement('template')
+template.innerHTML = `
 <div class="container">
     <h1>Notifications</h1>
     <button id="flush-queue" hidden></button>

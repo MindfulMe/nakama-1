@@ -1,9 +1,9 @@
 import http from '../http.js'
-import html from '../html.js'
 import { likeable, spoileable } from '../behaviors.js'
 import { likesMsg, commentsMsg, sanitizeContent, escapeHTML, linkify, wrapInSpoiler, ago } from '../utils.js'
 
-const template = html`
+const template = document.createElement('template')
+template.innerHTML = `
 <div class="container">
     <h1>Feed</h1>
     <form id="post-form">
