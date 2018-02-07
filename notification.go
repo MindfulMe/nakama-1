@@ -130,15 +130,13 @@ func checkUnreadNotifications(w http.ResponseWriter, r *http.Request) {
 	authUserID := ctx.Value(keyAuthUserID).(string)
 
 	var unread bool
-	if err := db.QueryRowContext(ctx, `
-		SELECT notifications.issued_at > users.notifications_seen_at AS unread
-		FROM notifications
+	if err := db.QueryRowContext(ctx, `SELECT EXISTS (
+		SELECT 1 FROM notifications
 		INNER JOIN users ON notifications.user_id = users.id
 		WHERE notifications.user_id = $1
-		ORDER BY notifications.issued_at DESC
-		LIMIT 1
-	`, authUserID).Scan(&unread); err != nil && err != sql.ErrNoRows {
-		respondError(w, fmt.Errorf("could not check unread notifications: %v", err))
+			AND notifications.issued_at > users.notifications_seen_at
+	)`, authUserID).Scan(&unread); err != nil {
+		respondError(w, fmt.Errorf("could not query existence of unread notifications: %v", err))
 		return
 	}
 
