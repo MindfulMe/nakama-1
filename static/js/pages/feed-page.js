@@ -7,11 +7,11 @@ template.innerHTML = `
 <div class="container">
     <h1>Feed</h1>
     <form id="post-form">
-        <textarea placeholder="Write something..." required></textarea>
+        <textarea placeholder="Write something..."  maxlength="480" required></textarea>
         <label>
             <input type="checkbox"> Spoiler
         </label>
-        <input type="text" placeholder="Spoiler of..." hidden>
+        <input type="text" placeholder="Spoiler of..." maxlength="128" hidden>
         <button type="submit">Post</button>
     </form>
     <button id="flush-queue" hidden></button>

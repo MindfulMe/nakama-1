@@ -4,8 +4,8 @@ SET DATABASE = nakama;
 
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL NOT NULL PRIMARY KEY,
-    email STRING NOT NULL UNIQUE,
-    username STRING NOT NULL UNIQUE,
+    email STRING(128) NOT NULL UNIQUE,
+    username STRING(15) NOT NULL UNIQUE,
     avatar_url STRING,
     followers_count INT NOT NULL CHECK (followers_count >= 0) DEFAULT 0,
     following_count INT NOT NULL CHECK (following_count >= 0) DEFAULT 0,
@@ -21,8 +21,8 @@ CREATE TABLE IF NOT EXISTS follows (
 
 CREATE TABLE IF NOT EXISTS posts (
     id SERIAL NOT NULL PRIMARY KEY,
-    content STRING NOT NULL,
-    spoiler_of STRING,
+    content STRING(480) NOT NULL,
+    spoiler_of STRING(128),
     likes_count INT NOT NULL CHECK (likes_count >= 0) DEFAULT 0,
     comments_count INT NOT NULL CHECK (comments_count >= 0) DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS feed (
 
 CREATE TABLE IF NOT EXISTS comments (
     id SERIAL NOT NULL PRIMARY KEY,
-    content STRING NOT NULL,
+    content STRING(256) NOT NULL,
     likes_count INT NOT NULL CHECK (likes_count >= 0) DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     user_id INT NOT NULL REFERENCES users,
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS notifications (
     id SERIAL NOT NULL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users,
     actor_id INT NOT NULL REFERENCES users,
-    verb STRING NOT NULL,
+    verb STRING(15) NOT NULL,
     object_id INT,
     target_id INT,
     issued_at TIMESTAMPTZ NOT NULL DEFAULT now(),

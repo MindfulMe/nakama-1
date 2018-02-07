@@ -12,7 +12,7 @@ template.innerHTML = `
     <div id="comments" class="articles" role="feed"></div>
     <button id="flush-queue" hidden></button>
     <form id="comment-form" hidden>
-        <textarea placeholder="Comment something..." required></textarea>
+        <textarea placeholder="Comment something..." maxlength="256" required></textarea>
         <button type="submit">Comment</button>
     </form>
 </div>
