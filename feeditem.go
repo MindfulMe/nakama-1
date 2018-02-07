@@ -55,7 +55,7 @@ func getFeed(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	rows, err := db.QueryContext(ctx, `
+	query := `
 		SELECT
 			feed.id,
 			posts.id,
@@ -78,9 +78,19 @@ func getFeed(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN subscriptions
 			ON subscriptions.user_id = $1
 			AND subscriptions.post_id = posts.id
-		WHERE feed.user_id = $1
+		WHERE feed.user_id = $1`
+	args := []interface{}{authUserID}
+
+	if before := strings.TrimSpace(r.URL.Query().Get("before")); before != "" {
+		query += " AND feed.id < $2"
+		args = append(args, before)
+	}
+
+	query += `
 		ORDER BY posts.created_at DESC
-	`, authUserID)
+		LIMIT 25`
+
+	rows, err := db.QueryContext(ctx, query, args...)
 	if err != nil {
 		respondError(w, fmt.Errorf("could not query feed: %v", err))
 		return

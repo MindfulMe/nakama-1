@@ -16,19 +16,34 @@ template.innerHTML = `
     </form>
     <button id="flush-queue" hidden></button>
     <div id="feed" class="articles" role="feed"></div>
+    <button id="load-more" hidden>Load more</button>
 </div>
 `
 
+let lastFeedItemId
 const feedQueue = []
 const feedCache = []
-async function getFeed() {
-    if (feedCache.length !== 0) {
-        return feedCache
-    }
-    const feed = await http.get('/api/feed')
+
+function addToCache(feed) {
     feedCache.push(...feed)
     return feed
 }
+
+function saveLastItemId(feed) {
+    const l = feed.length
+    if (l !== 0) {
+        lastFeedItemId = feed[l - 1]['id']
+    }
+    return feed
+}
+
+const getFeed = () => feedCache.length !== 0
+    ? Promise.resolve(feedCache)
+    : http.get('/api/feed').then(addToCache).then(saveLastItemId)
+
+const loadMore = () => typeof lastFeedItemId === 'undefined'
+    ? Promise.resolve([])
+    : http.get('/api/feed?before=' + lastFeedItemId).then(addToCache).then(saveLastItemId)
 
 function createFeedItemArticle(feedItem) {
     const { post } = feedItem
@@ -70,6 +85,7 @@ export default function () {
     const postButton = postForm.querySelector('button')
     const flushQueueButton = page.getElementById('flush-queue')
     const feedDiv = page.getElementById('feed')
+    const loadMoreButton = /** @type {HTMLButtonElement} */ (page.getElementById('load-more'))
 
     postForm.addEventListener('submit', ev => {
         ev.preventDefault()
@@ -145,7 +161,27 @@ export default function () {
         feed.forEach(feedItem => {
             feedDiv.appendChild(createFeedItemArticle(feedItem))
         })
+        loadMoreButton.hidden = false
     }).catch(console.error)
+
+    loadMoreButton.addEventListener('click', () => {
+        loadMoreButton.disabled = true
+        loadMore()
+            .then(feed => {
+                feed.forEach(feedItem => {
+                    feedDiv.appendChild(createFeedItemArticle(feedItem))
+                })
+                return feed
+            })
+            .catch(console.error)
+            .then(feed => {
+                if (feed.length < 25) {
+                    loadMoreButton.hidden = true
+                    return
+                }
+                loadMoreButton.disabled = false
+            })
+    })
 
     const unsubscribe = http.subscribe('/api/feed', feedItem => {
         feedQueue.push(feedItem)
