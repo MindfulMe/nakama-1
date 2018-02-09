@@ -24,12 +24,12 @@ var notificationsBroker *NotificationsBroker
 func main() {
 	var databaseURL string
 	var addr string
-	flag.StringVar(&databaseURL, "cockroach",
+	flag.StringVar(&databaseURL, "crdb",
 		env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/nakama?sslmode=disable"),
-		"Address in which CockroachDB runs.")
-	flag.StringVar(&addr, "addr",
+		"CockroachDB address")
+	flag.StringVar(&addr, "http",
 		":"+env("PORT", "80"),
-		"Address in which the HTTP server will run.")
+		"HTTP address")
 	flag.Parse()
 
 	var err error
