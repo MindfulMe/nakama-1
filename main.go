@@ -43,8 +43,11 @@ func main() {
 	}
 
 	feedBroker = newFeedBroker()
+	defer close(feedBroker.Notifier)
 	commentsBroker = newCommentsBroker()
+	defer close(commentsBroker.Notifier)
 	notificationsBroker = newNotificationsBroker()
+	defer close(notificationsBroker.Notifier)
 
 	mux := chi.NewMux()
 	mux.Use(middleware.Recoverer)
