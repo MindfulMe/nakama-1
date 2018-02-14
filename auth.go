@@ -60,8 +60,7 @@ func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 	if err := db.QueryRowContext(r.Context(), `
 		INSERT INTO verification_codes (user_id, expires_at) VALUES
 			((SELECT id FROM users WHERE email = $1), $2)
-		RETURNING code
-	`, input.Email, expiresAt).Scan(&code); err == sql.ErrNoRows {
+		RETURNING code`, input.Email, expiresAt).Scan(&code); err == sql.ErrNoRows {
 		http.Error(w,
 			http.StatusText(http.StatusNotFound),
 			http.StatusNotFound)
