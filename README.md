@@ -18,10 +18,13 @@ cockroach start --insecure --host 127.0.0.1
 cat schema.sql | cockroach sql --insecure
 ```
 
+You will need an SMTP server for the passwordless authentication. I recommend you [mailtrap.io](https://mailtrap.io/) to test it.
+Create and account and inbox there and save your credentials.
+
 Build and run:
 ```
 go build
-./nakama
+./nakama -smtpuser your_mailtrap_username -smtppwd your_mailtrap_password
 ```
 
 `main.go` contains the route definitions; check those.

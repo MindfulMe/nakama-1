@@ -6,7 +6,7 @@ template.innerHTML = `
     <h1>Welcome to Nakama 👋</h1>
     <form id="login">
         <input type="email" placeholder="Email" value="john@example.dev" autocomplete="email" autofocus required>
-        <button type="submit">Login</button>
+        <button type="submit">Send magic link</button>
     </form>
 </div>
 `
@@ -29,9 +29,9 @@ export default function () {
         loginInput.disabled = true
         loginButton.disabled = true
 
-        http.post('/api/login', { email }).then(payload => {
-            localStorage.setItem('auth_user', JSON.stringify(payload.user))
-            location.reload()
+        http.post('/api/passwordless/start', { email }).then(() => {
+            alert('Magic link sent')
+            loginForm.reset()
         }).catch(err => {
             console.error(err)
             if ('email' in err) {
@@ -39,9 +39,10 @@ export default function () {
             } else {
                 alert(err.message)
             }
+            loginInput.focus()
+        }).then(() => {
             loginInput.disabled = false
             loginButton.disabled = false
-            loginInput.focus()
         })
     })
 

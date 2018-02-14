@@ -45,6 +45,7 @@ const notFound = genPage('not-found')
  */
 const route = router([
     ['/', authenticated ? genPage('feed') : genPage('welcome')],
+    ['/callback', genPage('callback')],
     ['/search', genPage('search')],
     ['/notifications', authenticated ? genPage('notifications') : notFound],
     [/^\/users\/([^\/]+)\/following$/, genPage('following')],

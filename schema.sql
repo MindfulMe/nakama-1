@@ -13,6 +13,12 @@ CREATE TABLE IF NOT EXISTS users (
     notifications_seen_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS verification_codes (
+    code SERIAL NOT NULL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES users,
+    expires_at TIMESTAMPTZ NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS follows (
     follower_id INT NOT NULL REFERENCES users,
     following_id INT NOT NULL REFERENCES users,
