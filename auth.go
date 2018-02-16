@@ -16,8 +16,7 @@ import (
 
 // PasswordlessStartInput request body
 type PasswordlessStartInput struct {
-	Email       string  `json:"email"`
-	RedirectURI *string `json:"redirectUri,omitempty"`
+	Email string `json:"email"`
 }
 
 // ContextKey used in middlewares
@@ -74,9 +73,6 @@ func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 	q := make(url.Values)
 	q.Set("email", input.Email)
 	q.Set("verification_code", code)
-	if input.RedirectURI != nil {
-		q.Set("redirect_uri", *input.RedirectURI)
-	}
 	magicLink.RawQuery = q.Encode()
 
 	body, err := templateToString("templates/magic-link.html", map[string]string{
@@ -102,17 +98,6 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	email := q.Get("email")
 	verificationCode := q.Get("verification_code")
-	redirectURIString := q.Get("redirect_uri")
-	if redirectURIString == "" {
-		redirectURIString = "http://localhost/callback"
-	}
-	redirectURI, err := url.Parse(redirectURIString)
-	if err != nil {
-		respondJSON(w,
-			map[string]string{"redirectUri": "Invalid redirect URI"},
-			http.StatusUnprocessableEntity)
-		return
-	}
 
 	var userID string
 	if err := db.QueryRowContext(r.Context(), `
@@ -141,6 +126,7 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	redirectURI, _ := url.Parse("http://localhost/callback")
 	fragment := make(url.Values)
 	fragment.Set("jwt", tokenString)
 	fragment.Set("expires_at", string(expiresAtBytes))
