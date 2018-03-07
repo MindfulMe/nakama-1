@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"html/template"
 	"log"
+	"net"
 	"net/http"
 	"net/smtp"
 	"os"
@@ -55,7 +56,7 @@ func main() {
 		log.Fatalf("could not ping to database: %v\n", err)
 	}
 
-	smtpAddress = fmt.Sprintf("%s:%d", smtpHost, 25)
+	smtpAddress = net.JoinHostPort(smtpHost, "25")
 	smtpAuth = smtp.PlainAuth("", smtpUsername, smtpPassword, smtpHost)
 
 	feedBroker = newFeedBroker()
