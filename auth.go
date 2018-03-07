@@ -126,11 +126,11 @@ func passwordlessVerifyRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	redirectURI, _ := url.Parse("http://localhost/callback")
-	fragment := make(url.Values)
-	fragment.Set("jwt", tokenString)
-	fragment.Set("expires_at", string(expiresAtBytes))
-	redirectURI.Fragment = fragment.Encode()
+	f := make(url.Values)
+	f.Set("jwt", tokenString)
+	f.Set("expires_at", string(expiresAtBytes))
+	redirectURI, _ := url.Parse("/callback")
+	redirectURI.Fragment = f.Encode()
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "jwt",
