@@ -76,7 +76,8 @@ func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 	magicLink.RawQuery = q.Encode()
 
 	body, err := templateToString("templates/magic-link.html", map[string]string{
-		"magicLink": magicLink.String(),
+		"magicLink":        magicLink.String(),
+		"verificationCode": code,
 	})
 	if err != nil {
 		respondError(w, fmt.Errorf("could not build magic link template: %v", err))
