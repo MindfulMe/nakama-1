@@ -1,7 +1,7 @@
 import { getAuthUser } from '../auth.js'
+import { followable, likeable, spoileable } from '../behaviors.js'
 import http from '../http.js'
-import { likeable, followable, spoileable } from '../behaviors.js'
-import { followersMsg, followMsg, likesMsg, commentsMsg, goto, linkify, escapeHTML, wrapInSpoiler, ago } from '../utils.js'
+import { ago, avatarImg, commentsMsg, escapeHTML, followMsg, followersMsg, goto, likesMsg, linkify, wrapInSpoiler } from '../utils.js'
 
 const authenticated = getAuthUser() !== null
 
@@ -20,7 +20,7 @@ function createPostArticle(post) {
     article.innerHTML = wrapInSpoiler(post.spoilerOf, `
         <header>
             <div>
-                <figure class="avatar" data-initial="${user.username[0]}"></figure>
+                ${avatarImg(user)}
                 <span>${user.username}</span>
             </div>
             <a href="/posts/${post.id}" class="created-at"><time>${createdAt}</time></a>
@@ -55,7 +55,7 @@ export default function (username) {
         profileDiv.innerHTML = `
             <div class="container">
                 <div>
-                    <figure class="avatar big" data-initial="${user.username[0]}"></figure>
+                    ${avatarImg(user, true)}
                     <h1>${user.username}</h1>
                 </div>
                 <div class="user-stats">
@@ -64,8 +64,8 @@ export default function (username) {
                 </div>
                 <div>
                     ${user.me ? `
-                        <button>Edit avatar</button>
-                        <input type="file" accept="image/jpg,image/png" hidden>
+                        <button id="avatar-button">Edit avatar</button>
+                        <input id="avatar-input" type="file" accept="image/jpg,image/png" hidden>
                         <button id="logout">Logout</button>
                     ` : authenticated ? `
                         <button id="follow" title="${followMsg(user.followingOfMine)}">${followMsg(user.followingOfMine)}</button>
@@ -84,6 +84,29 @@ export default function (username) {
                     alert('could not logout')
                 })
             })
+
+            const avatarButton = /** @type {HTMLButtonElement} */ (profileDiv.querySelector('#avatar-button'))
+            const avatarInput = /** @type {HTMLInputElement} */ (profileDiv.querySelector('#avatar-input'))
+            avatarButton.addEventListener('click', () => {
+                avatarInput.click()
+            })
+            avatarInput.addEventListener('change', () => {
+                const avatar = avatarInput.files[0]
+                avatarButton.disabled = true
+                avatarInput.disabled = true
+                http.post('/api/upload_avatar', avatar, { 'Content-Type': avatar.type }).then(avatarUrl => {
+                    const authUser = JSON.parse(localStorage.getItem('auth_user'))
+                    authUser.avatarUrl = avatarUrl
+                    localStorage.setItem('auth_user', JSON.stringify(authUser))
+                    location.reload()
+                }).catch(err => {
+                    console.error(err)
+                    alert(err.message)
+                    avatarButton.disabled = false
+                    avatarInput.disabled = false
+                })
+            })
+
         } else if (authenticated) {
             followable(profileDiv.querySelector('#follow'), user.username)
         }

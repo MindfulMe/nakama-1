@@ -1,6 +1,6 @@
-import http from '../http.js'
 import { likeable, spoileable } from '../behaviors.js'
-import { likesMsg, commentsMsg, sanitizeContent, escapeHTML, linkify, wrapInSpoiler, ago } from '../utils.js'
+import http from '../http.js'
+import { ago, avatarImg, commentsMsg, escapeHTML, likesMsg, linkify, sanitizeContent, wrapInSpoiler } from '../utils.js'
 
 const template = document.createElement('template')
 template.innerHTML = `
@@ -55,7 +55,7 @@ function createFeedItemArticle(feedItem) {
     article.innerHTML = wrapInSpoiler(post.spoilerOf, `
         <header>
             <a href="/users/${user.username}">
-                <figure class="avatar" data-initial="${user.username[0]}"></figure>
+                ${avatarImg(user)}
                 <span>${user.username}</span>
             </a>
             <a href="/posts/${post.id}" class="created-at"><time>${createdAt}</time></a>

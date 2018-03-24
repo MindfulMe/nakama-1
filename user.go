@@ -6,7 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"mime"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -177,6 +183,53 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 	user.Me = authenticated && userID == authUserID
 
 	respondJSON(w, user, http.StatusOK)
+}
+
+func uploadAvatar(w http.ResponseWriter, r *http.Request) {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	defer r.Body.Close()
+
+	ct := http.DetectContentType(b)
+	if ct != "image/jpg" && ct != "image/jpeg" && ct != "image/png" {
+		log.Printf("%s is not a valid image\n", ct)
+		http.Error(w, http.StatusText(http.StatusUnsupportedMediaType), http.StatusUnsupportedMediaType)
+		return
+	}
+
+	extensions, err := mime.ExtensionsByType(ct)
+	if err != nil {
+		respondError(w, fmt.Errorf("could not get avatar extension: %v", err))
+		return
+	}
+	if extensions == nil || len(extensions) == 0 {
+		respondError(w, errors.New("could not get avatar extension"))
+		return
+	}
+	ext := extensions[0]
+
+	ctx := r.Context()
+	authUser := ctx.Value(keyAuthUser).(User)
+
+	if err := ioutil.WriteFile(filepath.Join("avatars", authUser.ID+ext), b, os.ModePerm); err != nil {
+		respondError(w, fmt.Errorf("could not write avatar to disc: %v", err))
+	}
+
+	// TODO: correctly build avatar URL
+	avatarURL := "http://localhost/avatars/" + authUser.ID + ext
+
+	if _, err := db.ExecContext(ctx, `
+		UPDATE users SET avatar_url = $1
+		WHERE id = $2
+	`, avatarURL, authUser.ID); err != nil {
+		respondError(w, fmt.Errorf("could not update avatar_url: %v", err))
+		return
+	}
+
+	io.WriteString(w, avatarURL)
 }
 
 func toggleFollow(w http.ResponseWriter, r *http.Request) {

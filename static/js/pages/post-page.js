@@ -1,7 +1,7 @@
 import { getAuthUser } from '../auth.js'
-import http from '../http.js'
 import { likeable } from '../behaviors.js'
-import { goto, likesMsg, commentsMsg, sanitizeContent, linkify, escapeHTML, ago } from '../utils.js'
+import http from '../http.js'
+import { ago, avatarImg, commentsMsg, escapeHTML, goto, likesMsg, linkify, sanitizeContent } from '../utils.js'
 
 const authenticated = getAuthUser() !== null
 
@@ -29,7 +29,7 @@ function createCommentArticle(comment) {
     article.innerHTML = `
         <header>
             <a href="/users/${user.username}">
-                <figure class="avatar" data-initial="${user.username[0]}"></figure>
+                ${avatarImg(user)}
                 <span>${user.username}</span>
             </a>
             <time class="created-at">${createdAt}</time>
@@ -90,7 +90,7 @@ export default function (postId) {
             <article class="container">
                 <header>
                     <a href="/users/${user.username}">
-                        <figure class="avatar" data-initial="${user.username[0]}"></figure>
+                        ${avatarImg(user)}
                         <span>${user.username}</span>
                     </a>
                     <time class="created-at">${createdAt}</time>

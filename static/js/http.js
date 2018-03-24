@@ -38,7 +38,7 @@ const get = url => fetch(url, { credentials: 'include' }).then(handleResponse)
  *
  * @param {string} url
  * @param {any=} payload
- * @param {{string: string}=} headers
+ * @param {{ [key: string]: string }=} headers
  */
 function post(url, payload, headers) {
     const options = {
@@ -46,10 +46,12 @@ function post(url, payload, headers) {
         credentials: 'include',
         headers: {},
     }
-    if (isObject(payload)) {
+    if (payload instanceof File) {
+        options['body'] = payload
+    } else if (isObject(payload)) {
         options['body'] = JSON.stringify(payload)
         options.headers['Content-Type'] = 'application/json'
-    } else if (payload !== undefined) {
+    } else if (payload !== undefined && payload !== null) {
         options['body'] = payload
     }
     Object.assign(options.headers, headers)

@@ -70,6 +70,7 @@ func main() {
 	mux.Use(middleware.Recoverer)
 	mux.Route("/api", func(api chi.Router) {
 		jsonRequired := middleware.AllowContentType("application/json")
+		imageRequired := middleware.AllowContentType("image/jpg", "image/jpeg", "image/png")
 		api.With(jsonRequired).Post("/passwordless/start", passwordlessStart)
 		api.Get("/passwordless/verify_redirect", passwordlessVerifyRedirect)
 		api.Post("/logout", logout)
@@ -77,6 +78,7 @@ func main() {
 		api.With(jsonRequired).Post("/users", createUser)
 		api.With(maybeAuthUserID).Get("/users", getUsers)
 		api.With(maybeAuthUserID).Get("/users/{username}", getUser)
+		api.With(imageRequired, mustAuthUser).Post("/upload_avatar", uploadAvatar)
 		api.With(mustAuthUser).Post("/users/{username}/toggle_follow", toggleFollow)
 		api.With(maybeAuthUserID).Get("/users/{username}/followers", getFollowers)
 		api.With(maybeAuthUserID).Get("/users/{username}/following", getFollowing)
@@ -96,7 +98,8 @@ func main() {
 	mux.Group(func(mux chi.Router) {
 		// TODO: remove no cache
 		mux.Use(middleware.NoCache)
-		mux.Get("/js/*", http.FileServer(http.Dir("static")).ServeHTTP)
+		mux.Method(http.MethodGet, "/avatars/*", http.StripPrefix("/avatars", http.FileServer(http.Dir("avatars"))))
+		mux.Method(http.MethodGet, "/js/*", http.FileServer(http.Dir("static")))
 		mux.Get("/styles.css", serveFile("static/styles.css"))
 		mux.Get("/*", serveFile("static/index.html"))
 	})

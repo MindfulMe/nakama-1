@@ -2,3 +2,4 @@ cockroach-data
 *.exe
 *.http
 *.rest
+avatars

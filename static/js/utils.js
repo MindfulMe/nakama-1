@@ -1,3 +1,7 @@
+export const avatarImg = (user, big = false) => user.avatarUrl !== null
+    ? `<img class="avatar${big ? ' big' : ''}" src="${user.avatarUrl}" alt="${user.username}">`
+    : `<figure class="avatar${big ? ' big' : ''}" data-initial="${user.username[0]}"></figure>`
+
 /**
  * @param {number} x
  */
