@@ -186,6 +186,7 @@ func getUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func uploadAvatar(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 4<<20)
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
