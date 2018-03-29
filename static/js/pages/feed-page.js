@@ -161,7 +161,9 @@ export default function () {
         feed.forEach(feedItem => {
             feedDiv.appendChild(createFeedItemArticle(feedItem))
         })
-        loadMoreButton.hidden = false
+        if (feed.length == 25) {
+            loadMoreButton.hidden = false
+        }
     }).catch(console.error)
 
     loadMoreButton.addEventListener('click', () => {
