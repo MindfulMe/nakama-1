@@ -55,10 +55,7 @@ const route = router([
     [/^\//, notFound],
 ])
 
-/**
- * @type {Node}
- */
-let currentPage
+/** @type {Node} */ let currentPage
 const disconnectEvent = new CustomEvent('disconnect')
 const pageOutlet = /** @type {HTMLDivElement} */ (document.getElementById('page'))
 
@@ -66,7 +63,7 @@ const pageOutlet = /** @type {HTMLDivElement} */ (document.getElementById('page'
  * Renders a page based on the current url.
  */
 async function render() {
-    if (currentPage !== undefined) {
+    if (currentPage instanceof Node) {
         currentPage.dispatchEvent(disconnectEvent) // Announces when the user leaves the page
         pageOutlet.innerHTML = ''
     }
