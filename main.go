@@ -98,7 +98,7 @@ func main() {
 	mux.Group(func(mux chi.Router) {
 		// TODO: remove no cache
 		mux.Use(middleware.NoCache)
-		mux.Method(http.MethodGet, "/avatars/*", http.StripPrefix("/avatars", http.FileServer(http.Dir("avatars"))))
+		mux.Method(http.MethodGet, "/avatars/*", http.StripPrefix("/avatars/", http.FileServer(http.Dir("avatars"))))
 		mux.Method(http.MethodGet, "/js/*", http.FileServer(http.Dir("static")))
 		mux.Get("/styles.css", serveFile("static/styles.css"))
 		mux.Get("/*", serveFile("static/index.html"))

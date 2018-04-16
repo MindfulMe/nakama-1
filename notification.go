@@ -220,7 +220,7 @@ func commentNotificationFanout(comment Comment) {
 }
 
 func collectMentions(content string) []string {
-	return mention.GetTags('@', content, ',', '.', '!', '?', '"', ')')
+	return mention.GetTagsAsUniqueStrings('@', content, ',', '.', '!', '?', '"', ')')
 }
 
 func postMentionNotificationFanout(post Post) {
