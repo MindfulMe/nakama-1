@@ -108,7 +108,7 @@ func main() {
 		Addr:              addr,
 		Handler:           mux,
 		ReadHeaderTimeout: time.Second * 5,
-		IdleTimeout:       time.Second * 60,
+		IdleTimeout:       time.Second * 30,
 	}
 
 	go func() {
