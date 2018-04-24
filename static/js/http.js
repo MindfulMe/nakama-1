@@ -6,20 +6,28 @@ import { isObject } from './utils.js'
  * @param {Response} res
  */
 export async function handleResponse(res) {
-    const ct = res.headers.get('Content-Type')
-    const isJSON = ct !== null && ct.startsWith('application/json')
-
-    const payload = await res[isJSON ? 'json' : 'text']()
-
     if (res.status === 401) {
+        localStorage.removeItem('jwt')
         localStorage.removeItem('auth_user')
+        localStorage.removeItem('expires_at')
+    }
+
+    const ct = res.headers.get('content-type')
+    const isJSON = typeof ct === 'string' && ct.startsWith('application/json')
+
+    let payload = await res[isJSON ? 'json' : 'text']()
+    if (!isJSON) {
+        try {
+            payload = JSON.parse(payload)
+        } catch (_) {
+            payload = { message: payload }
+        }
     }
 
     if (!res.ok) {
         const err = new Error(res.statusText)
         err['statusCode'] = res.status
-        if (isObject(payload)) Object.assign(err, payload)
-        else if (typeof payload === 'string' && payload !== '') err.message = payload
+        Object.assign(err, payload)
         throw err
     }
 
