@@ -69,7 +69,8 @@ func passwordlessStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	magicLink, _ := url.Parse("http://localhost/api/passwordless/verify_redirect")
+	magicLink := *appURL
+	magicLink.Path = "/api/passwordless/verify_redirect"
 	q := make(url.Values)
 	q.Set("email", input.Email)
 	q.Set("verification_code", code)

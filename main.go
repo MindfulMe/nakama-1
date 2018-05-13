@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"net/smtp"
+	"net/url"
 	"os"
 	"os/signal"
 	"time"
@@ -21,6 +22,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
+var appURL *url.URL
 var db *sql.DB
 var smtpAddress string
 var smtpAuth smtp.Auth
@@ -29,15 +31,22 @@ var commentsBroker *CommentsBroker
 var notificationsBroker *NotificationsBroker
 
 func main() {
-	var databaseURL, addr, smtpHost, smtpUsername, smtpPassword string
+	var port, domain, databaseURL, smtpHost, smtpUsername, smtpPassword string
+	flag.StringVar(&port, "port", env("PORT", "80"), "HTTP port")
+	flag.StringVar(&domain, "domain", env("APP_URL", "http://localhost:"+port+"/"), "Domain")
 	flag.StringVar(&databaseURL, "crdb",
 		env("DATABASE_URL", "postgresql://root@127.0.0.1:26257/nakama?sslmode=disable"),
 		"CockroachDB address")
-	flag.StringVar(&addr, "http", ":"+env("PORT", "80"), "HTTP address")
 	flag.StringVar(&smtpHost, "smtphost", env("SMTP_HOST", "smtp.mailtrap.io"), "SMTP host")
 	flag.StringVar(&smtpUsername, "smtpuser", os.Getenv("SMTP_USERNAME"), "SMTP username")
 	flag.StringVar(&smtpPassword, "smtppwd", os.Getenv("SMTP_PASSWORD"), "SMTP password")
 	flag.Parse()
+
+	var err error
+	appURL, err = url.Parse(domain)
+	if err != nil || !appURL.IsAbs() {
+		log.Fatal("could not parse domain url")
+	}
 
 	if smtpUsername == "" {
 		log.Fatal("SMTP username required")
@@ -46,7 +55,6 @@ func main() {
 		log.Fatal("SMTP password required")
 	}
 
-	var err error
 	db, err = sql.Open("postgres", databaseURL)
 	if err != nil {
 		log.Fatalf("could not open database connection: %v\n", err)
@@ -105,7 +113,7 @@ func main() {
 	})
 
 	s := http.Server{
-		Addr:              addr,
+		Addr:              ":" + port,
 		Handler:           mux,
 		ReadHeaderTimeout: time.Second * 5,
 		IdleTimeout:       time.Second * 30,
@@ -122,7 +130,7 @@ func main() {
 		}
 	}()
 
-	log.Printf("starting HTTP server at %s", addr)
+	log.Printf("starting HTTP server at %s\n", appURL)
 	if err := s.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalf("could not start server: %v\n", err)
 	}
