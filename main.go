@@ -47,7 +47,6 @@ func main() {
 	if err != nil || !appURL.IsAbs() {
 		log.Fatal("could not parse domain url")
 	}
-
 	if smtpUsername == "" {
 		log.Fatal("SMTP username required")
 	}
@@ -137,11 +136,11 @@ func main() {
 }
 
 func env(key, fallbackValue string) string {
-	value, present := os.LookupEnv(key)
-	if !present {
+	v, ok := os.LookupEnv(key)
+	if !ok {
 		return fallbackValue
 	}
-	return value
+	return v
 }
 
 func respondError(w http.ResponseWriter, err error) {
